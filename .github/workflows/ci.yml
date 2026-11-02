@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  push:
+    branches: ['main', 'arena/**']
+  pull_request:
+    branches: ['main']
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run build
+      - name: Smoke test the API
+        run: |
+          node server.js &
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:3000/api/health; then break; fi
+            sleep 1
+          done
+          curl -sf -X POST http://localhost:3000/api/chat \
+            -H 'Content-Type: application/json' \
+            -d '{"companionId":"felicia","mood":"warm","messages":[{"role":"user","content":"hello"}]}' > /dev/null
